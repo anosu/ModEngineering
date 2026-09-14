@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import subprocess
 
-from mod import DEFAULT_DEPENDENCY_KEY, ENGINEERING, local_props, run, sync, write
+from mod import DEFAULT_DEPENDENCY_KEY, ENGINEERING, local_props, run, solution, sync, write
 
 
 def scaffold(root: Path, repository: str, assembly: str, kind: str, github: str) -> dict:
@@ -71,8 +71,8 @@ public static partial class ModInfo
         common += '''    <Import Project="$(ModRepositoryRoot)build/PcBuild.props" />
     <PropertyGroup><RestoreAdditionalProjectSources>https://api.nuget.org/v3/index.json;https://nuget.bepinex.dev/v3/index.json</RestoreAdditionalProjectSources></PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.788" IncludeAssets="compile" />
-        <PackageReference Include="BepInEx.PluginInfoProps" Version="2.1.0" />
+        <PackageReference Include="BepInEx.Unity.IL2CPP" Version="$(BepInExVersion)" IncludeAssets="compile" />
+        <PackageReference Include="BepInEx.PluginInfoProps" Version="$(BepInExPluginInfoVersion)" />
         <Reference Include="$(GameInteropDir)/*.dll" Private="false" />
     </ItemGroup>
 '''
@@ -124,6 +124,7 @@ def main() -> None:
         old_solution=root/(old_name+'.slnx')
         if old_solution.exists(): old_solution.unlink()
         run(['git','submodule','add','https://github.com/example/optional-runtime.git','shared/Extension'],root)
+        run(['git','submodule','update','--init','--recursive','shared/Extension'],root)
     else:
         if not args.assembly: parser.error('--assembly is required for a standard Mod')
         root.mkdir(parents=True)
@@ -138,7 +139,11 @@ def main() -> None:
     config['engineeringRevision']=revision
     write(root/'mod.json',json.dumps(config,indent=2))
     sync(root,config)
-    write(root/'SharedDependencies.local.props',local_props(config))
+    sibling_utility = root.parent/'Utility/src/Utility/Utility.csproj'
+    sibling_adapter = root.parent/'OptionalRuntime/src/Extension/Extension.csproj'
+    if sibling_utility.exists() and (not config.get('useExtension') or sibling_adapter.exists()):
+        write(root/'SharedDependencies.local.props',local_props(config))
+        solution(root,config,local=True)
     run(['dotnet','tool','restore'],root)
     run(['dotnet','tool','run','csharpier','format','.'],root)
     if args.create_remote:
