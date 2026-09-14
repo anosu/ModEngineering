@@ -5,9 +5,12 @@ on:
       kind:
         required: true
         type: string
-      extension:
-        default: false
-        type: boolean
+      dependency_repository:
+        default: ''
+        type: string
+      dependency_path:
+        default: ''
+        type: string
     secrets:
       DEPENDENCY_DEPLOY_KEY:
         required: false
@@ -33,18 +36,20 @@ jobs:
           if [ -d shared/Utility ]; then
             git submodule update --init --recursive shared/Utility
           fi
-      - name: Read pinned Extension revision
-        if: inputs.extension
+      - name: Read pinned optional dependency revision
+        if: inputs.dependency_repository != ''
         id: extension
         shell: bash
-        run: echo "revision=$(git rev-parse HEAD:shared/Extension)" >> "$GITHUB_OUTPUT"
-      - name: Check out private Extension
-        if: inputs.extension
+        env:
+          DEPENDENCY_PATH: ${{ inputs.dependency_path }}
+        run: echo "revision=$(git rev-parse \"HEAD:$DEPENDENCY_PATH\")" >> "$GITHUB_OUTPUT"
+      - name: Check out optional dependency
+        if: inputs.dependency_repository != ''
         uses: actions/checkout@v7
         with:
-          repository: example/optional-runtime
+          repository: ${{ inputs.dependency_repository }}
           ref: ${{ steps.extension.outputs.revision }}
-          path: shared/Extension
+          path: ${{ inputs.dependency_path }}
           ssh-key: ${{ secrets.DEPENDENCY_DEPLOY_KEY }}
           persist-credentials: false
           submodules: recursive

@@ -17,9 +17,7 @@ parser.add_argument(
     help="JSON array of relative repository directory names",
 )
 parser.add_argument("--revision")
-parser.add_argument(
-    "--dependency", choices=["ModEngineering", "Utility", "Extension"], default="ModEngineering"
-)
+parser.add_argument("--dependency", default="ModEngineering")
 parser.add_argument("--key", type=Path, default=DEFAULT_DEPENDENCY_KEY)
 args = parser.parse_args()
 workspace = args.inventory.resolve().parent
@@ -38,7 +36,7 @@ for name in json.loads(args.inventory.read_text(encoding="utf-8")):
         elif args.command == "extension-secret":
             if not args.key:
                 parser.error("extension-secret requires --key")
-            if config.get("useExtension"):
+            if config.get("extension"):
                 extension_secret(root, args.key)
         else:
             result = subprocess.run(

@@ -23,7 +23,7 @@ for name in json.loads(args.inventory.read_text(encoding="utf-8")):
         "—"
         if config["kind"] == "library"
         else "Utility、Extension"
-        if config.get("useExtension")
+        if config.get("extension")
         else "Utility"
     )
     rows.append(f"| [{name}]({name}/) | {config['kind']} | {version} | {libraries} |")

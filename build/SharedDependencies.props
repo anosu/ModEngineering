@@ -3,7 +3,6 @@
         Condition="'$(CI)' != 'true' and '$(GITHUB_ACTIONS)' != 'true' and '$(UsePinnedSharedDependencies)' != 'true' and ('$(BuildingInsideVisualStudio)' != 'true' or $([System.String]::Copy('$(SolutionName)').EndsWith('.local'))) and Exists('$(ModRepositoryRoot)SharedDependencies.local.props')" />
     <PropertyGroup>
         <UtilityProjectPath Condition="'$(UtilityProjectPath)' == ''">$(ModRepositoryRoot)shared/Utility/src/Utility/Utility.csproj</UtilityProjectPath>
-        <ExtensionProjectPath Condition="'$(UseExtension)' == 'true' and '$(ExtensionProjectPath)' == ''">$(ModRepositoryRoot)shared/Extension/src/Extension/Extension.csproj</ExtensionProjectPath>
         <RestoreUseStaticGraphEvaluation>true</RestoreUseStaticGraphEvaluation>
         <SharedDependencyMode Condition="'$(SharedDependencyMode)' == ''">pinned</SharedDependencyMode>
         <SharedDependencyBuildRoot Condition="'$(SharedDependencyBuildRoot)' == ''">$(ModRepositoryRoot)artifacts/shared/$(SharedDependencyMode)/</SharedDependencyBuildRoot>
@@ -15,6 +14,6 @@
     </ItemGroup>
     <Target Name="ValidateSharedProjects" BeforeTargets="ResolveProjectReferences">
         <Error Condition="!Exists('$(UtilityProjectPath)')" Text="Utility source is missing. Initialize shared/Utility or configure SharedDependencies.local.props." />
-        <Error Condition="'$(UseExtension)' == 'true' and !Exists('$(ExtensionProjectPath)')" Text="Extension source is missing. Initialize shared/Extension with an authorized account or configure SharedDependencies.local.props." />
+        <Error Condition="'$(UseExtension)' == 'true' and !Exists('$(ExtensionProjectPath)')" Text="Optional dependency source is missing. Initialize its configured submodule or configure SharedDependencies.local.props." />
     </Target>
 </Project>

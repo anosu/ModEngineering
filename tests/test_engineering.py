@@ -37,9 +37,15 @@ class EngineeringTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = new_mod.scaffold(
-                root, "Example-Android-Variant", "Example", "android", "example/Example-Android-Variant"
+                root,
+                "Example-Android-Variant",
+                "Example",
+                "android",
+                "example/Example-Android-Variant",
             )
-            config.update(useExtension=True, tests=["tests/Example.Tests/Example.Tests.csproj"])
+            config.update(
+                extension=self.extension(), tests=["tests/Example.Tests/Example.Tests.csproj"]
+            )
             solution(root, config)
             projects = [
                 p.attrib["Path"] for p in ET.parse(root / "Example-Android-Variant.slnx").getroot()
@@ -76,14 +82,22 @@ class EngineeringTests(unittest.TestCase):
             repository="Example",
             project="src/Example/Example.csproj",
             kind="android",
-            useExtension=False,
             engineeringRevision="a" * 40,
         )
         public = generated(config)[".github/workflows/build.yml"]
         self.assertIn("@" + "a" * 40, public)
         self.assertNotIn("DEPENDENCY_DEPLOY_KEY", public)
-        config["useExtension"] = True
+        config["extension"] = self.extension()
         self.assertIn("DEPENDENCY_DEPLOY_KEY", generated(config)[".github/workflows/build.yml"])
+
+    @staticmethod
+    def extension():
+        return {
+            "repository": "example/optional-runtime",
+            "path": "shared/Extension",
+            "project": "shared/Extension/src/Extension/Extension.csproj",
+            "localProject": "../optional-runtime/src/Extension/Extension.csproj",
+        }
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Create a standard Mod or derive a Variant repository from an explicit upstream URL."""
+"""Create a Mod or derive a variant from an explicitly supplied upstream URL."""
 
 from __future__ import annotations
 
@@ -24,7 +24,6 @@ def scaffold(root: Path, repository: str, assembly: str, kind: str, github: str)
         assembly=assembly,
         project=f"src/{assembly}/{assembly}.csproj",
         tests=[],
-        useExtension=False,
     )
     write(
         root / "Directory.Build.props",
@@ -136,10 +135,11 @@ def main() -> None:
     parser.add_argument("--assembly")
     parser.add_argument("--kind", choices=["pc", "android"], default="android")
     parser.add_argument("--github", required=True, help="owner/repository")
-    parser.add_argument(
-        "--upstream", help="Explicit standard Android Git URL for a Variant derivative"
-    )
+    parser.add_argument("--upstream", help="Explicit upstream Git URL for a derivative")
     parser.add_argument("--extension-key", type=Path, default=DEFAULT_DEPENDENCY_KEY)
+    parser.add_argument(
+        "--extension-config", type=Path, help="Consumer-owned optional dependency JSON"
+    )
     parser.add_argument("--create-remote", choices=["public", "private"])
     args = parser.parse_args()
     root = args.directory.resolve()
@@ -152,34 +152,13 @@ def main() -> None:
         run(["git", "clone", "--recurse-submodules", args.upstream, str(root)], root.parent)
         run(["git", "remote", "rename", "origin", "upstream"], root)
         config = json.loads((root / "mod.json").read_text())
-        if config["kind"] != "android" or config.get("useExtension"):
+        if config["kind"] != "android" or config.get("extension"):
             raise ValueError("Upstream must be a standard Android Mod")
         old_name = config["repository"]
-        config.update(repository=repository, github=args.github, useExtension=True)
-        config["package"]["files"].insert(
-            0, {"source": "output/Extension.dll", "destination": "Mods/Extension/Extension.dll"}
-        )
-        text = (root / config["project"]).read_text()
-        write(
-            root / config["project"],
-            text.replace(
-                "<PropertyGroup>", "<PropertyGroup>\n        <UseExtension>true</UseExtension>", 1
-            ),
-        )
+        config.update(repository=repository, github=args.github)
         old_solution = root / (old_name + ".slnx")
         if old_solution.exists():
             old_solution.unlink()
-        run(
-            [
-                "git",
-                "submodule",
-                "add",
-                "https://github.com/example/optional-runtime.git",
-                "shared/Extension",
-            ],
-            root,
-        )
-        run(["git", "submodule", "update", "--init", "--recursive", "shared/Extension"], root)
     else:
         if not args.assembly:
             parser.error("--assembly is required for a standard Mod")
@@ -201,6 +180,21 @@ def main() -> None:
             root,
         )
         run(["git", "submodule", "update", "--init", "--recursive"], root)
+    if args.extension_config:
+        extension = json.loads(args.extension_config.read_text(encoding="utf-8"))
+        config["extension"] = extension
+        config["package"]["files"] = extension.get("packageFiles", []) + config["package"]["files"]
+        run(
+            [
+                "git",
+                "submodule",
+                "add",
+                "https://github.com/" + extension["repository"] + ".git",
+                extension["path"],
+            ],
+            root,
+        )
+        run(["git", "submodule", "update", "--init", "--recursive", extension["path"]], root)
     revision = run(["git", "rev-parse", "HEAD"], ENGINEERING, capture=True)
     run(["git", "fetch", "origin"], root / "shared/ModEngineering")
     run(["git", "checkout", "--detach", revision], root / "shared/ModEngineering")
@@ -208,15 +202,15 @@ def main() -> None:
     write(root / "mod.json", json.dumps(config, indent=2))
     sync(root, config)
     sibling_utility = root.parent / "Utility/src/Utility/Utility.csproj"
-    sibling_adapter = root.parent / "OptionalRuntime/src/Extension/Extension.csproj"
-    if sibling_utility.exists() and (not config.get("useExtension") or sibling_adapter.exists()):
+    sibling_extension = root / config.get("extension", {}).get("localProject", "")
+    if sibling_utility.exists() and (not config.get("extension") or sibling_extension.is_file()):
         write(root / "SharedDependencies.local.props", local_props(config))
         solution(root, config, local=True)
     run(["dotnet", "tool", "restore"], root)
     run(["dotnet", "tool", "run", "csharpier", "format", "."], root)
     if args.create_remote:
-        if config.get("useExtension") and args.create_remote != "private":
-            parser.error("Variant derivatives must remain private")
+        if config.get("extension") and args.create_remote != "private":
+            parser.error("Derivatives with access-controlled dependencies must remain private")
         run(
             [
                 "gh",
@@ -231,7 +225,7 @@ def main() -> None:
             ],
             root,
         )
-        if config.get("useExtension"):
+        if config.get("extension"):
             from mod import extension_secret
 
             extension_secret(root, args.extension_key)
