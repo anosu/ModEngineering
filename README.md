@@ -20,6 +20,7 @@ Android 普通 push/PR 检查、测试、打包但不上传测试包；匹配项
 
 ```sh
 git submodule update --init --remote shared/ModEngineering shared/Utility
+git submodule update --init --recursive
 python shared/ModEngineering/scripts/project.py check
 python shared/ModEngineering/scripts/project.py test
 python shared/ModEngineering/scripts/project.py build

@@ -8,7 +8,7 @@ C# 统一 CSharpier 1.3.0、4 空格、100 列、LF。新模块启用 nullable�
 
 运行目标保持 net6.0，工程 SDK 使用支持 slnx 的 .NET 9；测试运行时使用 .NET 8。VS 使用 2022 17.14 或更新版本。SDK 与 NuGet 版本固定，定期通过批量升级验证更新。
 
-Utility 提供共享运行能力。各游戏的 CDN 路径、哈希协议、字典规则、同步加载默认值、通知时机和安装布局保持兼容。公共抽象不能依赖某一个游戏的配置或 Unity 类型。
+Utility 提供共享运行能力。各游戏的 CDN 路径、哈希协议、字典规则、同步加载默认值、通知时机和安装布局保持兼容。公共模块不依赖某个游戏的配置；纯数据模块不依赖 Unity。
 
 PC build 默认写入 artifacts，deploy 才复制到游戏目录。Android push/PR 做规范检查、测试和确定性打包验证，不上传 Actions 测试附件；v 标签与唯一项目版本匹配才发布正式 ZIP 和 SHA256SUMS。共享库及 PC 没有自动 Release。
 
@@ -51,4 +51,4 @@ Android 默认 ZIP 名为 `<程序集>-Android.zip`，包含 `Mods/<程序集>/<
 
 工作流先检出所需子模块，再执行 `./shared/ModEngineering/.github/actions/build`。平台由项目属性读取；工作流无需复制平台和共享实现的提交号。额外仓库的检出权限由消费者工作流自行处理。
 
-更新共享代码使用 `git submodule update --init --remote shared/ModEngineering shared/Utility`，验证后提交 Git 子模块指针。没有额外的同步命令、模板版本或生成文件校验。Android 的测试包不上传，只有版本标签触发发布；PC 保持本地发布。
+更新共享代码使用 `git submodule update --init --remote shared/ModEngineering shared/Utility`，再执行 `git submodule update --init --recursive`，让嵌套依赖与父项目记录一致。验证后提交 Git 子模块指针。没有额外的同步命令、模板版本或生成文件校验。Android 的测试包不上传，只有版本标签触发发布；PC 保持本地发布。
