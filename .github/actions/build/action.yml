@@ -1,0 +1,47 @@
+name: Validate and package
+description: Build the checked-out project using its MSBuild configuration
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v6
+      with:
+        global-json-file: global.json
+        dotnet-version: 8.0.x
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.12'
+    - name: Read project platform
+      id: project
+      shell: bash
+      run: echo "platform=$(python shared/ModEngineering/scripts/project.py platform)" >> "$GITHUB_OUTPUT"
+    - name: Check formatting
+      shell: bash
+      run: python shared/ModEngineering/scripts/project.py check
+    - name: Run tests
+      shell: bash
+      run: python shared/ModEngineering/scripts/project.py test
+    - name: Build library
+      if: steps.project.outputs.platform == 'library'
+      shell: bash
+      run: python shared/ModEngineering/scripts/project.py build
+    - name: Build Android package
+      if: steps.project.outputs.platform == 'android'
+      shell: bash
+      run: |
+        args=()
+        if [ "$GITHUB_REF_TYPE" = tag ]; then args+=(--expected-version "$GITHUB_REF_NAME"); fi
+        python shared/ModEngineering/scripts/project.py package "${args[@]}"
+    - name: Publish Android tag
+      if: steps.project.outputs.platform == 'android' && startsWith(github.ref, 'refs/tags/v')
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        directory="artifacts/release/$GITHUB_REF_NAME"
+        files=("$directory"/*.zip "$directory/SHA256SUMS.txt")
+        for file in "${files[@]}"; do test -f "$file"; done
+        if gh release view "$GITHUB_REF_NAME" --json tagName >/dev/null 2>&1; then
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+        else
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
+        fi

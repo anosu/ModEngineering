@@ -10,10 +10,10 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="$(UtilityProjectPath)" Private="true" AdditionalProperties="$(SharedReferenceBuildProperties)" GlobalPropertiesToRemove="OutputPath;BaseOutputPath;BaseIntermediateOutputPath;MSBuildProjectExtensionsPath" />
-        <ProjectReference Include="$(ExtensionProjectPath)" Condition="'$(UseExtension)' == 'true'" Private="true" AdditionalProperties="$(SharedReferenceBuildProperties)" GlobalPropertiesToRemove="OutputPath;BaseOutputPath;BaseIntermediateOutputPath;MSBuildProjectExtensionsPath" />
+        <ProjectReference Include="$(ExtensionProjectPath)" Condition="'$(ExtensionProjectPath)' != ''" Private="true" AdditionalProperties="$(SharedReferenceBuildProperties)" GlobalPropertiesToRemove="OutputPath;BaseOutputPath;BaseIntermediateOutputPath;MSBuildProjectExtensionsPath" />
     </ItemGroup>
     <Target Name="ValidateSharedProjects" BeforeTargets="ResolveProjectReferences">
         <Error Condition="!Exists('$(UtilityProjectPath)')" Text="Utility source is missing. Initialize shared/Utility or configure SharedDependencies.local.props." />
-        <Error Condition="'$(UseExtension)' == 'true' and !Exists('$(ExtensionProjectPath)')" Text="Optional dependency source is missing. Initialize its configured submodule or configure SharedDependencies.local.props." />
+        <Error Condition="'$(ExtensionProjectPath)' != '' and !Exists('$(ExtensionProjectPath)')" Text="Optional dependency source is missing. Initialize its configured submodule or configure SharedDependencies.local.props." />
     </Target>
 </Project>

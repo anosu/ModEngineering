@@ -1,35 +1,39 @@
 # ModEngineering
 
-PC / Android IL2CPP Mod 的公共工程入口，集中维护构建、代码检查、项目生成和 Android 发布流程。运行时通用能力由 Utility 提供。
+PC / Android IL2CPP Mod 的公共构建工具。项目设置直接使用 MSBuild，运行时通用能力由 Utility 提供。
 
-需要 Python 3.10+、PowerShell 7、.NET SDK 9 和 .NET 8 测试运行时。消费者将本仓库固定为 `shared/ModEngineering` 子模块。
-
-```sh
-python shared/ModEngineering/scripts/mod.py sync
-python shared/ModEngineering/scripts/mod.py check
-python shared/ModEngineering/scripts/mod.py build --configuration Debug
-python shared/ModEngineering/scripts/mod.py test
-python shared/ModEngineering/scripts/mod.py solution --local
-```
-
-Android 使用 `scripts/build-release.ps1` 验证打包；PC 使用 `scripts/deploy.ps1` 构建后部署。普通 push/PR 不上传测试包，Android 版本标签触发正式发布。
-
-升级工程用 `mod.py update --revision <commit>`；升级其他共享子模块增加 `--dependency <目录名>`。命令拒绝脏仓库并验证结果，不自动提交或发布。工作区批量入口为 `scripts/workspace.py`，只处理显式清单中的目录。
-
-## 创建项目
+需要 Python 3.10+、global.json 指定的 .NET SDK 和 .NET 8 测试运行时。消费者通过 `shared/ModEngineering` Git 子模块引用本仓库；Git 记录依赖版本。
 
 ```sh
-python scripts/new-mod.py ../ExampleMod-Android --assembly ExampleMod --kind android --github example/ExampleMod-Android
+git submodule update --init --recursive
+python shared/ModEngineering/scripts/project.py check
+python shared/ModEngineering/scripts/project.py build --configuration Debug
+python shared/ModEngineering/scripts/project.py test
+python shared/ModEngineering/scripts/project.py package
 ```
 
-`--kind pc` 生成 PC 项目；`--upstream <URL>` 从指定上游派生项目；`--create-remote public|private` 明确指定是否及如何创建远程仓库。游戏代码、依赖和资源映射由消费者维护。
+`src/*/*.csproj` 是主项目，`tests/**/*.csproj` 自动作为测试项目。平台、额外发行文件和部署路径由 `.csproj` 的属性与 Item 定义。`global.json`、`.editorconfig` 和工具清单都是原生工具配置。
 
-## 可选依赖
+Android 普通 push/PR 检查、测试、打包但不上传测试包；匹配项目版本的 `v*` 标签自动发布。PC 使用 `project.py deploy` 显式部署，不自动发布。CI 执行当前检出子模块中的本地 composite action，不另存工作流版本。
 
-额外依赖通过消费者自己的 `mod.json` 中的 `extension` 对象配置：`repository`、`path`、`project`、`localProject`，以及可选的 `secretName`、`packageFiles`。具体地址、名称及访问配置不属于本公共仓库。
+## 更新依赖
 
-生成器可通过 `--extension-config <JSON文件>` 接入该配置。`mod.py extension-secret --key <仓库外的密钥文件>` 设置调用方 secret，密钥仅通过标准输入传给 GitHub CLI。默认密钥文件为 `~/.ssh/extension_deploy_ed25519`，可通过 `MOD_DEPENDENCY_KEY_FILE` 覆盖。
+```sh
+git submodule update --init --remote shared/ModEngineering shared/Utility
+python shared/ModEngineering/scripts/project.py check
+python shared/ModEngineering/scripts/project.py test
+python shared/ModEngineering/scripts/project.py build
+git add shared/ModEngineering shared/Utility
+```
 
-公开仓库不得记录其他项目的非公开信息。模板、测试和文档使用虚构示例；具体部署配置只保留在对应消费者或本机配置中。
+检查变更后正常提交。需要选定历史版本时，在相应子模块内使用 `git checkout`。
+
+## 创建与维护项目
+
+可从最接近的现有 Mod 开始，也可使用 `dotnet new classlib` 在 `src/<名称>/` 建立项目并配置加载器引用。普通 Git 子模块管理共享源码；额外依赖、访问设置和资源文件由消费者直接声明。
+
+增加测试项目后，命令行会自动发现它；在 VS 中添加到解决方案，或执行 `project.py solution`。本地共享源码联调可执行 `project.py solution --local`。这些是按需操作，不存在生成文件漂移检查。
+
+公共工具不保存使用者的非公开项目身份和部署信息。
 
 详见 [工程规范](docs/CONVENTIONS.md)。

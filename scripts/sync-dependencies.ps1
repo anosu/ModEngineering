@@ -7,8 +7,9 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path -LiteralPath $RepositoryRoot).Path
-$config = Get-Content -LiteralPath (Join-Path $repo 'mod.json') -Raw | ConvertFrom-Json
-[xml]$project = Get-Content -LiteralPath (Join-Path $repo $config.project) -Raw
+$projects = @(Get-ChildItem -Path (Join-Path $repo 'src/*/*.csproj') -File)
+if ($projects.Count -ne 1) { throw 'Expected one project under src/<name>/.' }
+[xml]$project = Get-Content -LiteralPath $projects[0].FullName -Raw
 $sets = @(
     @{ Property = 'GameInteropReferenceDirectory'; Source = $InteropDirectory; Target = 'dependencies/interop/assemblies' },
     @{ Property = 'MelonLoaderReferenceDirectory'; Source = $MelonLoaderDirectory; Target = 'dependencies/melonloader/net6' }
