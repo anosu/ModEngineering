@@ -42,7 +42,9 @@ jobs:
         shell: bash
         env:
           DEPENDENCY_PATH: ${{ inputs.dependency_path }}
-        run: echo "revision=$(git rev-parse \"HEAD:$DEPENDENCY_PATH\")" >> "$GITHUB_OUTPUT"
+        run: |
+          revision=$(git rev-parse "HEAD:$DEPENDENCY_PATH")
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
       - name: Check out optional dependency
         if: inputs.dependency_repository != ''
         uses: actions/checkout@v7
