@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import subprocess
 
-from mod import ENGINEERING, local_props, run, sync, write
+from mod import DEFAULT_DEPENDENCY_KEY, ENGINEERING, local_props, run, sync, write
 
 
 def scaffold(root: Path, repository: str, assembly: str, kind: str, github: str) -> dict:
@@ -104,7 +104,7 @@ def main() -> None:
     parser.add_argument('--kind',choices=['pc','android'],default='android')
     parser.add_argument('--github',required=True,help='owner/repository')
     parser.add_argument('--upstream',help='Explicit standard Android Git URL for a Variant derivative')
-    parser.add_argument('--extension-key',type=Path)
+    parser.add_argument('--extension-key',type=Path,default=DEFAULT_DEPENDENCY_KEY)
     parser.add_argument('--create-remote',choices=['public','private'])
     args=parser.parse_args()
     root=args.directory.resolve()
@@ -144,7 +144,7 @@ def main() -> None:
     if args.create_remote:
         if config.get('useExtension') and args.create_remote!='private': parser.error('Variant derivatives must remain private')
         run(['gh','repo','create',args.github,'--'+args.create_remote,'--source',str(root),'--remote','origin'],root)
-        if args.extension_key:
+        if config.get('useExtension'):
             from mod import extension_secret
             extension_secret(root,args.extension_key)
     print(f'Created {root}. Add game dependencies, validate, then commit and push. No release was created.')

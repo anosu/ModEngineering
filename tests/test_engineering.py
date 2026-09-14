@@ -53,7 +53,7 @@ class EngineeringTests(unittest.TestCase):
             self.assertIn('{configuration}',config['deployDirectory'])
 
     def test_consumer_workflow_pins_revision_and_passes_private_secret_only_when_needed(self):
-        config=dict(repository='Example',kind='android',useExtension=False,engineeringRevision='a'*40)
+        config=dict(repository='Example',project='src/Example/Example.csproj',kind='android',useExtension=False,engineeringRevision='a'*40)
         public=generated(config)['.github/workflows/build.yml']
         self.assertIn('@'+'a'*40,public)
         self.assertNotIn('DEPENDENCY_DEPLOY_KEY',public)

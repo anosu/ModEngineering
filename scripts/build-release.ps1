@@ -39,11 +39,11 @@ function Invoke-Dotnet([string[]]$Arguments) {
     } finally { $process.Dispose() }
 }
 
-$properties = (Invoke-Dotnet @('msbuild', $project, '-nologo', "-p:Configuration=$Configuration", '-p:UsePinnedSharedDependencies=true', '-getProperty:Version,TargetPath,TargetDir') | ConvertFrom-Json).Properties
+$properties = (Invoke-Dotnet -Arguments @('msbuild', $project, '-nologo', "-p:Configuration=$Configuration", '-p:UsePinnedSharedDependencies=true', '-getProperty:Version,TargetPath,TargetDir') | ConvertFrom-Json).Properties
 $version = $properties.Version
 if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:[-.][0-9A-Za-z.-]+)?$') { throw "Invalid version: $version" }
 if ($ExpectedVersion -and $ExpectedVersion.TrimStart('v') -cne $version) { throw "Tag $ExpectedVersion does not match version $version." }
-Write-Host (Invoke-Dotnet @('build', $project, '-c', $Configuration, '--nologo', '--no-incremental', '-p:UsePinnedSharedDependencies=true'))
+Write-Host (Invoke-Dotnet -Arguments @('build', $project, '-c', $Configuration, '--nologo', '--no-incremental', '-p:UsePinnedSharedDependencies=true'))
 $assembly = [Reflection.Assembly]::LoadFile($properties.TargetPath)
 $type = $assembly.GetType("$($config.assembly).ModInfo", $false)
 if ($null -eq $type -or $type.GetField('Version').GetRawConstantValue() -cne $version) { throw 'Compiled ModInfo.Version does not match the project version.' }

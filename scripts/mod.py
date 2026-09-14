@@ -13,6 +13,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 ENGINEERING = Path(__file__).resolve().parents[1]
+DEFAULT_DEPENDENCY_KEY = Path(os.environ.get("MOD_DEPENDENCY_KEY_FILE", str(Path.home() / ".ssh/extension_deploy_ed25519")))
 
 
 def run(args: list[str], root: Path, *, capture: bool = False) -> str:
@@ -89,6 +90,14 @@ jobs:
 </Project>
 '''
         files["SharedDependencies.local.props.example"] = local_props(config)
+        projects = [config["project"], *config.get("tests", []), "../Utility/src/Utility/Utility.csproj"]
+        if config.get("useExtension"):
+            projects.append("../OptionalRuntime/src/Extension/Extension.csproj")
+        xml = ET.Element("Solution")
+        for path in projects:
+            ET.SubElement(xml, "Project", Path=path)
+        ET.indent(xml, space="    ")
+        files[config["repository"] + ".local.slnx.example"] = ET.tostring(xml, encoding="unicode")
     return files
 
 
@@ -173,24 +182,27 @@ def extension_secret(root: Path, key: Path) -> None:
         subprocess.run(["gh", "secret", "set", "DEPENDENCY_DEPLOY_KEY", "--repo", config["github"]], stdin=stream, check=True)
 
 
-def update(root: Path, revision: str) -> None:
+def update(root: Path, revision: str, dependency: str = "ModEngineering") -> None:
     if run(["git", "status", "--porcelain"], root, capture=True):
         raise ValueError(f"Refusing to upgrade a dirty repository: {root}")
-    shared = root / "shared/ModEngineering"
+    shared = root / "shared" / dependency
     run(["git", "fetch", "origin"], shared)
     run(["git", "checkout", "--detach", revision], shared)
+    run(["git", "submodule", "update", "--init", "--recursive"], shared)
     config = load(root)
-    config["engineeringRevision"] = run(["git", "rev-parse", "HEAD"], shared, capture=True)
-    write(root / "mod.json", json.dumps(config, indent=2, ensure_ascii=False))
+    if dependency == "ModEngineering":
+        config["engineeringRevision"] = run(["git", "rev-parse", "HEAD"], shared, capture=True)
+        write(root / "mod.json", json.dumps(config, indent=2, ensure_ascii=False))
     # Run the newly selected implementation, not the old caller.
-    run([sys.executable, str(shared / "scripts/mod.py"), "sync", "--repo", str(root)], root)
-    run([sys.executable, str(shared / "scripts/mod.py"), "check", "--repo", str(root)], root)
-    run([sys.executable, str(shared / "scripts/mod.py"), "test", "--repo", str(root)], root)
+    entry = root / "shared/ModEngineering/scripts/mod.py"
+    run([sys.executable, str(entry), "sync", "--repo", str(root)], root)
+    run([sys.executable, str(entry), "check", "--repo", str(root)], root)
+    run([sys.executable, str(entry), "test", "--repo", str(root)], root)
     config = load(root)
     if config["kind"] == "android":
         run(["pwsh", "-NoProfile", "-File", "scripts/build-release.ps1"], root)
     else:
-        build(root, config, "Release")
+        run(["dotnet", "build", config["project"], "-c", "Release", "-p:UsePinnedSharedDependencies=true", "--nologo"], root)
 
 
 def main() -> None:
@@ -199,8 +211,9 @@ def main() -> None:
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument("--configuration", default="Release", choices=["Debug", "Release"])
     parser.add_argument("--local", action="store_true")
-    parser.add_argument("--key", type=Path)
+    parser.add_argument("--key", type=Path, default=DEFAULT_DEPENDENCY_KEY)
     parser.add_argument("--revision")
+    parser.add_argument("--dependency", choices=["ModEngineering", "Utility", "Extension"], default="ModEngineering")
     args = parser.parse_args()
     root = args.repo.resolve()
     config = load(root)
@@ -208,6 +221,12 @@ def main() -> None:
         sync(root, config)
     elif args.command == "check":
         sync(root, config, check=True)
+        actual = run(["git", "rev-parse", "HEAD"], root / "shared/ModEngineering", capture=True)
+        if actual != config.get("engineeringRevision"):
+            raise ValueError("Engineering submodule and workflow revisions differ; run the shared upgrade command")
+        for project in [config["project"], *config.get("tests", [])]:
+            if not within(root, project).is_file():
+                raise ValueError("Configured project is missing: " + project)
         run(["dotnet", "tool", "restore"], root)
         run(["dotnet", "tool", "run", "csharpier", "check", "."], root)
     elif args.command == "build":
@@ -225,7 +244,7 @@ def main() -> None:
     elif args.command == "update":
         if not args.revision:
             parser.error("update requires --revision (immutable tag or commit)")
-        update(root, args.revision)
+        update(root, args.revision, args.dependency)
 
 
 if __name__ == "__main__":
