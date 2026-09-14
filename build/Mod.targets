@@ -1,0 +1,16 @@
+<Project>
+    <PropertyGroup>
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true' or '$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+        <OutputPath Condition="'$(IsTestProject)' != 'true' and '$(SharedDependencyBuildRoot)' == ''">$(ModRepositoryRoot)artifacts/bin/$(MSBuildProjectName)/$(Configuration)/</OutputPath>
+        <AppendTargetFrameworkToOutputPath Condition="'$(IsTestProject)' != 'true'">false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+    <Target Name="GenerateModVersion" BeforeTargets="CoreCompile" Condition="'$(GenerateModVersion)' == 'true'">
+        <PropertyGroup><_ModVersionFile>$(IntermediateOutputPath)ModVersion.g.cs</_ModVersionFile></PropertyGroup>
+        <WriteLinesToFile File="$(_ModVersionFile)" Lines="namespace $(RootNamespace) { public static partial class ModInfo { public const string Version = &quot;$(Version)&quot;%3B } }" Overwrite="true" WriteOnlyWhenDifferent="true" />
+        <ItemGroup><Compile Include="$(_ModVersionFile)" /></ItemGroup>
+    </Target>
+    <Target Name="ValidateDeclaredReferences" BeforeTargets="ResolveAssemblyReferences">
+        <Error Condition="'%(Reference.HintPath)' != '' and !Exists('%(Reference.HintPath)')" Text="Required dependency is missing: %(Reference.HintPath). See dependencies/README.md." />
+    </Target>
+</Project>

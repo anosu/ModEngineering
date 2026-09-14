@@ -1,0 +1,9 @@
+<Project>
+    <Import Project="$(ModRepositoryRoot)Build.local.props" Condition="'$(CI)' != 'true' and '$(GITHUB_ACTIONS)' != 'true' and Exists('$(ModRepositoryRoot)Build.local.props')" />
+    <PropertyGroup>
+        <GameInteropDir Condition="'$(GameInteropDir)' == '' and '$(GameDir)' != ''">$(GameDir)/BepInEx/interop</GameInteropDir>
+    </PropertyGroup>
+    <Target Name="ValidatePcGameDependencies" BeforeTargets="PrepareForBuild">
+        <Error Condition="!Exists('$(GameInteropDir)/UnityEngine.CoreModule.dll')" Text="PC interop DLLs are missing. Set GameInteropDir or GameDir in Build.local.props. GameDir is only required for deployment." />
+    </Target>
+</Project>
