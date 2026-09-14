@@ -2,8 +2,6 @@
     <PropertyGroup>
         <Deterministic>true</Deterministic>
         <ContinuousIntegrationBuild Condition="'$(CI)' == 'true' or '$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
-        <OutputPath Condition="'$(IsTestProject)' != 'true' and '$(SharedDependencyBuildRoot)' == ''">$(ModRepositoryRoot)artifacts/bin/$(MSBuildProjectName)/$(Configuration)/</OutputPath>
-        <AppendTargetFrameworkToOutputPath Condition="'$(IsTestProject)' != 'true'">false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
     <Target Name="GenerateModVersion" BeforeTargets="CoreCompile" Condition="'$(GenerateModVersion)' == 'true'">
         <PropertyGroup><_ModVersionFile>$(IntermediateOutputPath)ModVersion.g.cs</_ModVersionFile></PropertyGroup>

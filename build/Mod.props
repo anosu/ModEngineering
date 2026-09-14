@@ -1,0 +1,7 @@
+<Project>
+    <PropertyGroup>
+        <BaseOutputPath Condition="'$(SharedDependencyBuildRoot)' == ''">$(ModRepositoryRoot)artifacts/bin/$(MSBuildProjectName)/</BaseOutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <Deterministic>true</Deterministic>
+    </PropertyGroup>
+</Project>
