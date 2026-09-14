@@ -74,6 +74,12 @@ class ProjectTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             project.contained(self.root, "../escape")
 
+    def test_invalid_platform_cannot_silently_skip_ci_builds(self):
+        path = project.project(self.root)
+        path.write_text(path.read_text().replace("<ModPlatform>android", "<ModPlatform>andriod"))
+        with self.assertRaisesRegex(ValueError, "Unsupported ModPlatform"):
+            project.evaluate(self.root)
+
     def test_metadata_comes_from_project_not_a_manifest(self):
         (self.root / "unrelated.json").write_text(json.dumps({"Version": "99"}))
         self.assertEqual("1.2.3", project.evaluate(self.root)["Properties"]["Version"])

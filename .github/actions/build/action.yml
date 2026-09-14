@@ -13,7 +13,9 @@ runs:
     - name: Read project platform
       id: project
       shell: bash
-      run: echo "platform=$(python shared/ModEngineering/scripts/project.py platform)" >> "$GITHUB_OUTPUT"
+      run: |
+        platform="$(python shared/ModEngineering/scripts/project.py platform)"
+        echo "platform=$platform" >> "$GITHUB_OUTPUT"
     - name: Check formatting
       shell: bash
       run: python shared/ModEngineering/scripts/project.py check

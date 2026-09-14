@@ -56,7 +56,11 @@ def evaluate(
         args.append("-p:UsePinnedSharedDependencies=true")
     if package:
         args += ["-target:GetModPackageFiles", "-getItem:ModPackageFile"]
-    return json.loads(run(args, root, capture=True))
+    result = json.loads(run(args, root, capture=True))
+    platform = result["Properties"]["ModPlatform"]
+    if platform not in ("", "library", "pc", "android"):
+        raise ValueError(f"Unsupported ModPlatform: {platform}")
+    return result
 
 
 def solution(root: Path, local: bool = False) -> None:
@@ -73,7 +77,7 @@ def solution(root: Path, local: bool = False) -> None:
         ET.SubElement(xml, "Project", Path=os.path.relpath(path, root).replace("\\", "/"))
     ET.indent(xml, space="    ")
     target = root / (root.name + (".local" if local else "") + ".slnx")
-    target.write_text(ET.tostring(xml, encoding="unicode") + "\n", encoding="utf-8")
+    target.write_text(ET.tostring(xml, encoding="unicode") + "\n", encoding="utf-8", newline="\n")
 
 
 def build(root: Path, configuration: str) -> None:
@@ -145,7 +149,9 @@ def package(root: Path, configuration: str, expected_version: str | None = None)
         digest = hashlib.sha256()
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
-    (directory / "SHA256SUMS.txt").write_text(f"{digest.hexdigest()}  {name}\n", encoding="utf-8")
+    (directory / "SHA256SUMS.txt").write_text(
+        f"{digest.hexdigest()}  {name}\n", encoding="utf-8", newline="\n"
+    )
     print(archive)
     return archive
 
