@@ -32,6 +32,21 @@ Android 打包使用 `project.py package`；PC 显式安装使用 `project.py de
 
 PC Mod 在 `.csproj` 声明 `<ModPlatform>pc</ModPlatform>`；Android Mod 在 `.csproj` 导入 `shared/ModEngineering/build/Android.props`，获得平台、目标框架、标准依赖路径和三个基础加载器引用。普通共享库无需声明平台。Version、AssemblyName、RootNamespace 等使用标准 MSBuild 属性。默认 PC 安装目录是 `BepInEx/plugins/<程序集>/<配置>/net6.0`，特殊项目可设置 ModDeployDirectory。
 
+新 Android 项目可复制现有项目的根目录工具配置与子模块设置，然后用 `dotnet new classlib` 创建 `src/<名称>/`。主项目只需以下基础结构；游戏专属引用、资源和额外发布文件直接加在同一个 `.csproj`：
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="$(ModRepositoryRoot)shared/ModEngineering/build/Android.props" />
+    <PropertyGroup><Version>1.0.0</Version></PropertyGroup>
+    <ItemGroup>
+        <Reference Include="Assembly-CSharp" HintPath="$(GameInteropReferenceDirectory)/Assembly-CSharp.dll" Private="false" />
+    </ItemGroup>
+    <Import Project="$(ModRepositoryRoot)shared/ModEngineering/build/SharedDependencies.props" />
+</Project>
+```
+
+`Directory.Build.props` 提供 `ModRepositoryRoot`。这个骨架只在创建时使用；后续构建规则始终从 ModEngineering 导入，不需要同步模板文件。
+
 Android 默认 ZIP 名为 `<程序集>-Android.zip`，包含 `Mods/<程序集>/<程序集>.dll` 和同目录的 Utility.dll。需要其他文件时，在项目中使用普通 MSBuild Target 和 Item：
 
 ```xml
