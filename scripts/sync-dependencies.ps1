@@ -10,6 +10,12 @@ $repo = (Resolve-Path -LiteralPath $RepositoryRoot).Path
 $projects = @(Get-ChildItem -Path (Join-Path $repo 'src/*/*.csproj') -File)
 if ($projects.Count -ne 1) { throw 'Expected one project under src/<name>/.' }
 [xml]$project = Get-Content -LiteralPath $projects[0].FullName -Raw
+$references = @($project.Project.ItemGroup.Reference)
+$androidImport = '$(ModRepositoryRoot)shared/ModEngineering/build/Android.props'
+if (@($project.Project.Import | Where-Object { $_.Project -eq $androidImport }).Count -gt 0) {
+    [xml]$android = Get-Content -LiteralPath (Join-Path $repo 'shared/ModEngineering/build/Android.props') -Raw
+    $references += @($android.Project.ItemGroup.Reference)
+}
 $sets = @(
     @{ Property = 'GameInteropReferenceDirectory'; Source = $InteropDirectory; Target = 'dependencies/interop/assemblies' },
     @{ Property = 'MelonLoaderReferenceDirectory'; Source = $MelonLoaderDirectory; Target = 'dependencies/melonloader/net6' }
@@ -19,7 +25,7 @@ $copies = @()
 foreach ($set in $sets) {
     $prefix = '$(' + $set.Property + ')/'
     $count = 0
-    foreach ($reference in $project.Project.ItemGroup.Reference) {
+    foreach ($reference in $references) {
         if ($null -eq $reference) { continue }
         $hint = [string]$reference.HintPath
         if (-not $hint.Replace('\', '/').StartsWith($prefix)) { continue }

@@ -31,7 +31,7 @@ git add shared/ModEngineering shared/Utility
 
 ## 创建与维护项目
 
-可从最接近的现有 Mod 开始，也可使用 `dotnet new classlib` 在 `src/<名称>/` 建立项目并配置加载器引用。普通 Git 子模块管理共享源码；额外依赖、访问设置和资源文件由消费者直接声明。
+可从最接近的现有 Mod 开始，也可使用 `dotnet new classlib` 在 `src/<名称>/` 建立项目。Android 主项目导入 `shared/ModEngineering/build/Android.props`，只声明版本、游戏专属引用和额外发布文件，再导入 `SharedDependencies.props`。普通 Git 子模块管理共享源码；额外依赖、访问设置和资源文件由消费者直接声明。无需维护项目模板版本或生成清单。
 
 增加测试项目后，命令行会自动发现它；在 VS 中添加到解决方案，或执行 `project.py solution`。本地共享源码联调可执行 `project.py solution --local`。这些是按需操作，不存在生成文件漂移检查。
 
