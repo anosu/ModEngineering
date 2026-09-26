@@ -4,6 +4,10 @@
 
 源码放 `src/<名称>/`，独立测试放 `tests/<名称>.Tests/`。`dependencies/` 只跟踪必要编译引用与发行资源，`artifacts/`、完整 interop、本地方案与本机配置不进入 Git。标准方案使用仓库名 `.slnx`，本地联调方案使用 `.local.slnx`。
 
+Android Mod 固定使用 `dependencies/interop/assemblies/` 保存项目显式引用的少量编译 DLL，使用 `dependencies/interop-backup/` 保存当前游戏的完整 Interop 导出。备份目录只跟踪一个内容为 `*`、`!.gitignore` 的 `.gitignore`；导出的 DLL、缓存和清单均留在本机。克隆后可直接把整套导出复制到该目录，不需要为每个游戏另建清单或脚本。`dependencies/melonloader/net6/` 保存项目所需的加载器编译引用。
+
+游戏更新后，先整体替换本机备份，再从仓库根目录执行 `pwsh -NoProfile -File shared/ModEngineering/scripts/sync-dependencies.ps1 -RepositoryRoot . -InteropDirectory dependencies/interop-backup -MelonLoaderDirectory <加载器的net6目录>`。脚本按 `.csproj` 中的显式 `Reference` 验证并复制所需 DLL；不再引用的旧 DLL 需单独清理。新增引用时先修改 `.csproj`，同步后只提交最小编译引用集。构建和 CI 不读取备份目录。
+
 C# 统一 CSharpier 1.3.0、4 空格、100 列、LF。新模块启用 nullable；旧游戏 hook 的 nullable 例外保留在项目配置，迁移时真正修复，不用大面积抑制警告。公共 API 写 XML 注释，异步 I/O 传递取消令牌。只有依赖 Unity 的代码可以访问 Unity API，纯缓存与协议代码应独立测试。
 
 运行目标保持 net6.0，工程 SDK 使用支持 slnx 的 .NET 9；测试运行时使用 .NET 8。VS 使用 2022 17.14 或更新版本。SDK 与 NuGet 版本固定，定期通过批量升级验证更新。
