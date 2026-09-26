@@ -30,7 +30,7 @@ Android 打包使用 `project.py package`；PC 显式安装使用 `project.py de
 
 ## 项目差异
 
-PC Mod 在 `.csproj` 声明 `<ModPlatform>pc</ModPlatform>`；Android Mod 在 `.csproj` 导入 `shared/ModEngineering/build/Android.props`，获得平台、目标框架、标准依赖路径、基础加载器引用和最小 Interop 目录的通配引用。普通共享库无需声明平台。Version、AssemblyName、RootNamespace 等使用标准 MSBuild 属性。默认 PC 安装目录是 `BepInEx/plugins/<程序集>/<配置>/net6.0`，特殊项目可设置 ModDeployDirectory。
+PC Mod 在 `.csproj` 声明 `<ModPlatform>pc</ModPlatform>`；Android Mod 在 `.csproj` 导入 `shared/ModEngineering/build/Android.props`，获得平台、目标框架、标准依赖路径、基础加载器引用和最小 Interop 目录的通配引用。普通共享库无需声明平台。版本写在 `.csproj`；AssemblyName、Product 和 RootNamespace 默认来自项目文件名，只有不同名时才需要覆盖。默认 PC 安装目录是 `BepInEx/plugins/<程序集>/<配置>/net6.0`，特殊项目可设置 ModDeployDirectory。
 
 新 Android 项目可复制现有项目的根目录工具配置与子模块设置，然后用 `dotnet new classlib` 创建 `src/<名称>/`。将游戏编译所需 DLL 放进 `dependencies/interop/assemblies/`，主项目只需以下基础结构；特殊引用设置、资源和额外发布文件直接加在同一个 `.csproj`：
 
