@@ -7,41 +7,30 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path -LiteralPath $RepositoryRoot).Path
-$projects = @(Get-ChildItem -Path (Join-Path $repo 'src/*/*.csproj') -File)
-if ($projects.Count -ne 1) { throw 'Expected one project under src/<name>/.' }
-[xml]$project = Get-Content -LiteralPath $projects[0].FullName -Raw
-$references = @($project.Project.ItemGroup.Reference)
-$androidImport = '$(ModRepositoryRoot)shared/ModEngineering/build/Android.props'
-if (@($project.Project.Import | Where-Object { $_.Project -eq $androidImport }).Count -gt 0) {
-    [xml]$android = Get-Content -LiteralPath (Join-Path $repo 'shared/ModEngineering/build/Android.props') -Raw
-    $references += @($android.Project.ItemGroup.Reference)
-}
 $sets = @(
-    @{ Property = 'GameInteropReferenceDirectory'; Source = $InteropDirectory; Target = 'dependencies/interop/assemblies' },
-    @{ Property = 'MelonLoaderReferenceDirectory'; Source = $MelonLoaderDirectory; Target = 'dependencies/melonloader/net6' }
+    @{ Source = $InteropDirectory; Target = 'dependencies/interop/assemblies' },
+    @{ Source = $MelonLoaderDirectory; Target = 'dependencies/melonloader/net6' }
 )
-# Validate both sets before copying anything. Unrelated files are never deleted.
+
+# The tracked DLL filenames are the dependency list. Validate every source before copying.
 $copies = @()
 foreach ($set in $sets) {
-    $prefix = '$(' + $set.Property + ')/'
-    $count = 0
-    foreach ($reference in $references) {
-        if ($null -eq $reference) { continue }
-        $hint = [string]$reference.HintPath
-        if (-not $hint.Replace('\', '/').StartsWith($prefix)) { continue }
-        $name = $hint.Replace('\', '/').Substring($prefix.Length)
-        if ($name -match '[/\\]' -or $name -notmatch '\.dll$') { throw "Invalid reference: $hint" }
-        $source = Join-Path $set.Source $name
-        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing reference: $source" }
-        $copies += @{ Source = $source; Target = (Join-Path (Join-Path $repo $set.Target) $name) }
-        $count++
+    $target = Join-Path $repo $set.Target
+    if (-not (Test-Path -LiteralPath $target -PathType Container)) {
+        throw "Missing tracked dependency directory: $target"
     }
-    if ($count -eq 0) { throw "No declared references for $($set.Property)" }
+    $files = @(Get-ChildItem -LiteralPath $target -Filter '*.dll' -File)
+    if ($files.Count -eq 0) { throw "No tracked DLLs in $target" }
+    $sourceRoot = if ([IO.Path]::IsPathRooted($set.Source)) { $set.Source } else { Join-Path $repo $set.Source }
+    foreach ($file in $files) {
+        $source = Join-Path $sourceRoot $file.Name
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing dependency: $source" }
+        $copies += @{ Source = $source; Target = $file.FullName }
+    }
 }
 foreach ($copy in $copies) {
-    [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($copy.Target))
     if ([IO.Path]::GetFullPath($copy.Source) -ne [IO.Path]::GetFullPath($copy.Target)) {
         Copy-Item -LiteralPath $copy.Source -Destination $copy.Target -Force
     }
 }
-Write-Host "Synchronized $($copies.Count) declared dependencies. Full exports remain outside tracked reference directories."
+Write-Host "Synchronized $($copies.Count) DLLs from the local exports."

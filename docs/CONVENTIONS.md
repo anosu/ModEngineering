@@ -4,9 +4,9 @@
 
 源码放 `src/<名称>/`，独立测试放 `tests/<名称>.Tests/`。`dependencies/` 只跟踪必要编译引用与发行资源，`artifacts/`、完整 interop、本地方案与本机配置不进入 Git。标准方案使用仓库名 `.slnx`，本地联调方案使用 `.local.slnx`。
 
-Android Mod 固定使用 `dependencies/interop/assemblies/` 保存项目显式引用的少量编译 DLL，使用 `dependencies/interop-backup/` 保存当前游戏的完整 Interop 导出。备份目录只跟踪 `.gitignore`；根目录也忽略整个备份目录，防止重新生成时意外提交导出文件。克隆后可直接把整套导出复制到该目录，不需要为每个游戏另建清单或脚本。`dependencies/melonloader/net6/` 保存加载器编译引用。
+Android Mod 固定使用 `dependencies/interop/assemblies/` 保存少量编译 DLL。Android.props 通配引用该目录下的全部 DLL，因此目录内容就是编译依赖清单，增加引用只需复制 DLL。`dependencies/interop-backup/` 保存当前游戏的完整 Interop 导出，不参与构建；该目录只跟踪 `.gitignore`，根目录也忽略整个备份目录，防止重新生成时意外提交导出文件。`dependencies/melonloader/net6/` 保存加载器编译引用。
 
-游戏更新后，先整体替换本机备份，再从仓库根目录执行 `pwsh -NoProfile -File shared/ModEngineering/scripts/sync-dependencies.ps1 -RepositoryRoot . -InteropDirectory dependencies/interop-backup -MelonLoaderDirectory <加载器的net6目录>`。脚本按 Android.props 和 `.csproj` 中的 `Reference` 验证并复制所需 DLL；不再引用的旧 DLL 需单独清理。新增游戏引用时修改 `.csproj`，同步后只提交最小编译引用集。构建和 CI 不读取备份目录。
+游戏更新后，先整体替换本机备份，再从仓库根目录执行 `pwsh -NoProfile -File shared/ModEngineering/scripts/sync-dependencies.ps1 -RepositoryRoot . -InteropDirectory dependencies/interop-backup -MelonLoaderDirectory <加载器的net6目录>`。脚本按两个编译目录中已有的 DLL 文件名验证来源并刷新内容，不增删依赖文件。新增引用时从备份复制 DLL 到 `interop/assemblies/`；不再需要的 DLL 直接从该目录删除。只提交最小编译集合，构建和 CI 不读取备份目录。
 
 C# 统一 CSharpier 1.3.0、4 空格、100 列、LF。新模块启用 nullable；旧游戏 hook 的 nullable 例外保留在项目配置，迁移时真正修复，不用大面积抑制警告。公共 API 写 XML 注释，异步 I/O 传递取消令牌。只有依赖 Unity 的代码可以访问 Unity API，纯缓存与协议代码应独立测试。
 
@@ -30,17 +30,14 @@ Android 打包使用 `project.py package`；PC 显式安装使用 `project.py de
 
 ## 项目差异
 
-PC Mod 在 `.csproj` 声明 `<ModPlatform>pc</ModPlatform>`；Android Mod 在 `.csproj` 导入 `shared/ModEngineering/build/Android.props`，获得平台、目标框架、标准依赖路径和三个基础加载器引用。普通共享库无需声明平台。Version、AssemblyName、RootNamespace 等使用标准 MSBuild 属性。默认 PC 安装目录是 `BepInEx/plugins/<程序集>/<配置>/net6.0`，特殊项目可设置 ModDeployDirectory。
+PC Mod 在 `.csproj` 声明 `<ModPlatform>pc</ModPlatform>`；Android Mod 在 `.csproj` 导入 `shared/ModEngineering/build/Android.props`，获得平台、目标框架、标准依赖路径、基础加载器引用和最小 Interop 目录的通配引用。普通共享库无需声明平台。Version、AssemblyName、RootNamespace 等使用标准 MSBuild 属性。默认 PC 安装目录是 `BepInEx/plugins/<程序集>/<配置>/net6.0`，特殊项目可设置 ModDeployDirectory。
 
-新 Android 项目可复制现有项目的根目录工具配置与子模块设置，然后用 `dotnet new classlib` 创建 `src/<名称>/`。主项目只需以下基础结构；游戏专属引用、资源和额外发布文件直接加在同一个 `.csproj`：
+新 Android 项目可复制现有项目的根目录工具配置与子模块设置，然后用 `dotnet new classlib` 创建 `src/<名称>/`。将游戏编译所需 DLL 放进 `dependencies/interop/assemblies/`，主项目只需以下基础结构；特殊引用设置、资源和额外发布文件直接加在同一个 `.csproj`：
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
     <Import Project="$(ModRepositoryRoot)shared/ModEngineering/build/Android.props" />
     <PropertyGroup><Version>1.0.0</Version></PropertyGroup>
-    <ItemGroup>
-        <Reference Include="Assembly-CSharp" HintPath="$(GameInteropReferenceDirectory)/Assembly-CSharp.dll" Private="false" />
-    </ItemGroup>
     <Import Project="$(ModRepositoryRoot)shared/ModEngineering/build/SharedDependencies.props" />
 </Project>
 ```
