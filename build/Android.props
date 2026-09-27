@@ -14,9 +14,7 @@
         <Reference Include="Il2CppInterop.Runtime" HintPath="$(MelonLoaderReferenceDirectory)/Il2CppInterop.Runtime.dll" Private="false" />
         <Reference Include="MelonLoader" HintPath="$(MelonLoaderReferenceDirectory)/MelonLoader.dll" Private="false" />
         <GameInteropDll Include="$(GameInteropReferenceDirectory)/*.dll" />
-        <GameInteropDll Remove="$(GameInteropReferenceDirectory)/UnityEngine.CoreModule.dll" Condition="'$(UseUnityCoreAlias)' == 'true'" />
         <Reference Include="@(GameInteropDll)" Private="false" />
-        <Reference Include="UnityEngine.CoreModule" HintPath="$(GameInteropReferenceDirectory)/UnityEngine.CoreModule.dll" Aliases="UnityCore" Private="false" Condition="'$(UseUnityCoreAlias)' == 'true'" />
     </ItemGroup>
     <Target Name="ValidateGameInterop" BeforeTargets="ResolveAssemblyReferences">
         <Error Condition="'@(GameInteropDll)' == ''" Text="No game Interop DLLs found in $(GameInteropReferenceDirectory)." />
