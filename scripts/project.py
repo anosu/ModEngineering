@@ -52,8 +52,7 @@ def evaluate(
         f"-p:Configuration={configuration}",
         "-getProperty:ModPlatform,Version,AssemblyName,TargetPath,TargetDir,GameDir,ModDeployDirectory,ModPackageName,UtilityProjectPath,ExtensionProjectPath",
     ]
-    if not local:
-        args.append("-p:UsePinnedSharedDependencies=true")
+    args.append(f"-p:UsePinnedSharedDependencies={'false' if local else 'true'}")
     if package:
         args += ["-target:GetModPackageFiles", "-getItem:ModPackageFile"]
     result = json.loads(run(args, root, capture=True))
@@ -101,7 +100,11 @@ def validate_solution(root: Path) -> None:
 
 
 def solution(root: Path, local: bool = False) -> None:
+    if local and not (root / "SharedDependencies.local.props").is_file():
+        raise ValueError("Configure SharedDependencies.local.props before creating a local solution")
     paths = solution_projects(root, local)
+    if local and set(paths) == set(solution_projects(root)):
+        raise ValueError("Local dependencies match pinned dependencies; use the standard solution")
     xml = ET.Element("Solution")
     for path in paths:
         ET.SubElement(xml, "Project", Path=os.path.relpath(path, root).replace("\\", "/"))
@@ -208,6 +211,8 @@ def main() -> None:
     parser.add_argument("--local", action="store_true")
     parser.add_argument("--expected-version")
     args = parser.parse_args()
+    if args.local and args.command != "solution":
+        parser.error("--local is only supported by the solution command")
     root = args.repo.resolve()
     if args.command == "check":
         validate_solution(root)

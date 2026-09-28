@@ -8,7 +8,9 @@ Android Mod 固定使用 `dependencies/interop/assemblies/` 保存少量编译 D
 
 游戏更新后，先整体替换本机备份，再从仓库根目录执行 `pwsh -NoProfile -File shared/ModEngineering/scripts/sync-dependencies.ps1 -RepositoryRoot . -InteropDirectory dependencies/interop-backup -MelonLoaderDirectory <加载器的net6目录>`。脚本按两个编译目录中已有的 DLL 文件名验证来源并刷新内容，不增删依赖文件。新增引用时从备份复制 DLL 到 `interop/assemblies/`；不再需要的 DLL 直接从该目录删除。只提交最小编译集合，构建和 CI 不读取备份目录。
 
-C# 统一 CSharpier 1.3.0、4 空格、100 列、LF。新模块启用 nullable；旧游戏 hook 的 nullable 例外保留在项目配置，迁移时真正修复，不用大面积抑制警告。公共 API 写 XML 注释，异步 I/O 传递取消令牌。只有依赖 Unity 的代码可以访问 Unity API，纯缓存与协议代码应独立测试。
+C# 统一 CSharpier 1.3.0、4 空格、100 列、LF。新模块启用 nullable；旧游戏 hook 的 nullable 例外保留在项目配置，迁移时真正修复，不用大面积抑制警告。注释解释不明显的契约和限制；异步 I/O 传递取消令牌，只有依赖 Unity 的代码可以访问 Unity API。
+
+测试只覆盖有实际回归风险的行为，不为命名、成员存在性、简单转发或机械修改单独增加测试。已有测试失效、重复或只复述实现时应删除，并清理相应依赖。使用与维护说明集中在现有 README、API 和工程规范中，不为每次修改新增实施笔记、验证报告或重复清单。
 
 运行目标保持 net6.0，工程 SDK 使用支持 slnx 的 .NET 9；测试运行时使用 .NET 8。VS 使用 2022 17.14 或更新版本。SDK 与 NuGet 版本固定，定期通过批量升级验证更新。
 
@@ -59,7 +61,9 @@ Android 默认 ZIP 名为 `<程序集>-Android.zip`，包含 `Mods/<程序集>/<
 
 ## VS 和共享源码
 
-打开正常的 `.slnx` 即可使用仓库固定的共享源码。需要联调同级共享工程时，保留 `SharedDependencies.local.props` 中的路径并运行 `project.py solution --local`，打开生成的 `.local.slnx`。本机覆盖不进入 Git；CI 和普通方案使用固定源码。
+普通 `.slnx`、直接 `dotnet build` 和工程脚本默认使用仓库固定的共享源码。需要联调同级共享工程时，配置 `SharedDependencies.local.props` 中的路径并运行 `project.py solution --local`，在 VS 或命令行中构建生成的 `.local.slnx`；直接构建项目时显式传入 `-p:UsePinnedSharedDependencies=false`。缺少本地配置、路径无效或依赖与固定源码完全相同时，不生成本地方案。`--local` 仅用于生成方案；工程脚本的构建、测试和打包始终使用固定依赖，CI 也不读取本地覆盖。
+
+`SharedDependencies.local.props` 和 `.local.slnx` 按需保留，不要求每个项目都有，也不进入 Git。`Build.local.props` 仅配置 PC 的游戏、Interop 与部署路径，独立于共享依赖选择，保留现有值。
 
 源项目直接导入 `shared/ModEngineering/build/SharedDependencies.props`，PC 同时导入 PcBuild.props。额外共享项目可通过 ExtensionProjectPath 声明；普通 MSBuild ProjectReference 也可以使用。保留输出隔离，以免多个 Mod 同时构建共享项目时写入同一个中间目录。
 

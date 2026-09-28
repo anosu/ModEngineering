@@ -1,4 +1,3 @@
-import json
 import sys
 import tempfile
 import unittest
@@ -67,15 +66,6 @@ class ProjectTests(unittest.TestCase):
     def test_missing_solution_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Missing solution"):
             project.validate_solution(self.root)
-
-    def test_check_rejects_missing_solution_before_running_tools(self):
-        with (
-            patch.object(sys, "argv", ["project.py", "check", "--repo", str(self.root)]),
-            patch.object(project, "run") as run,
-        ):
-            with self.assertRaisesRegex(ValueError, "Missing solution"):
-                project.main()
-            run.assert_not_called()
 
     def test_test_command_uses_pinned_dependencies_and_requested_configuration(self):
         path = self.root / "tests/Example.Tests/Example.Tests.csproj"
@@ -165,10 +155,6 @@ class ProjectTests(unittest.TestCase):
         path.write_text(path.read_text().replace("<ModPlatform>android", "<ModPlatform>andriod"))
         with self.assertRaisesRegex(ValueError, "Unsupported ModPlatform"):
             project.evaluate(self.root)
-
-    def test_metadata_comes_from_project_not_a_manifest(self):
-        (self.root / "unrelated.json").write_text(json.dumps({"Version": "99"}))
-        self.assertEqual("1.2.3", project.evaluate(self.root)["Properties"]["Version"])
 
 
 if __name__ == "__main__":

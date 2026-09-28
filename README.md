@@ -33,7 +33,9 @@ git add shared/ModEngineering shared/Utility
 
 可从最接近的现有 Mod 开始，也可使用 `dotnet new classlib` 在 `src/<名称>/` 建立项目。Android 主项目导入 `shared/ModEngineering/build/Android.props`，从 `dependencies/interop/assemblies/` 通配引用编译 DLL；版本、特殊引用设置和额外发布文件留在项目中，再导入 `SharedDependencies.props`。普通 Git 子模块管理共享源码；额外依赖、访问设置和资源文件由消费者直接声明。无需维护项目模板版本或生成清单。
 
-创建项目或增加测试后，在 VS 中维护标准 `.slnx`，或执行 `project.py solution`。`check` 验证方案存在、引用有效，并包含主项目、测试和固定共享项目；不比较 XML 排版、排序或文件夹。本地共享源码联调可执行 `project.py solution --local`，本地方案不能代替标准方案。
+创建项目或增加测试后，在 VS 中维护标准 `.slnx`，或执行 `project.py solution`。`check` 验证方案存在、引用有效，并包含主项目、测试和固定共享项目；不比较 XML 排版、排序或文件夹。本地共享源码联调先配置 `SharedDependencies.local.props`，再执行 `project.py solution --local`；依赖必须有效且与固定源码不同。
+
+普通构建默认使用固定依赖，包括直接 `dotnet build`。本地联调在 VS 或命令行中构建 `.local.slnx`，也可直接构建项目并传入 `-p:UsePinnedSharedDependencies=false`。`--local` 仅适用于生成方案；工程脚本的构建、测试、部署和打包仍使用固定依赖。
 
 公共工具不保存使用者的非公开项目身份和部署信息。
 
