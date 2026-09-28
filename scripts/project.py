@@ -101,7 +101,9 @@ def validate_solution(root: Path) -> None:
 
 def solution(root: Path, local: bool = False) -> None:
     if local and not (root / "SharedDependencies.local.props").is_file():
-        raise ValueError("Configure SharedDependencies.local.props before creating a local solution")
+        raise ValueError(
+            "Configure SharedDependencies.local.props before creating a local solution"
+        )
     paths = solution_projects(root, local)
     if local and set(paths) == set(solution_projects(root)):
         raise ValueError("Local dependencies match pinned dependencies; use the standard solution")
