@@ -67,4 +67,4 @@ Android 默认 ZIP 名为 `<程序集>-Android.zip`，包含 `Mods/<程序集>/<
 
 工作流先检出所需子模块，再执行 `./shared/ModEngineering/.github/actions/build`。平台由项目属性读取；工作流无需复制平台和共享实现的提交号。额外仓库的检出权限由消费者工作流自行处理。
 
-更新共享代码使用 `git submodule update --init --remote shared/ModEngineering shared/Utility`，再执行 `git submodule update --init --recursive`，让嵌套依赖与父项目记录一致。验证后提交 Git 子模块指针。没有额外的同步命令、模板版本或生成文件校验。Android 的测试包不上传，只有版本标签触发发布；PC 保持本地发布。
+更新共享代码使用 `git submodule update --init --remote shared/ModEngineering shared/Utility`，再执行 `git submodule update --init --recursive`，让嵌套依赖与父项目记录一致。验证后提交 Git 子模块指针。没有额外的同步命令或模板版本。`check` 验证标准 `.slnx` 存在，包含主项目、已发现测试和固定共享项目，且引用有效；不比较生成文件的文本、排序或方案文件夹。测试命令也固定使用仓库依赖，不能由本机路径覆盖。Android 的测试包不上传，只有版本标签触发发布；PC 保持本地发布。

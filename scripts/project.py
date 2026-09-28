@@ -63,7 +63,7 @@ def evaluate(
     return result
 
 
-def solution(root: Path, local: bool = False) -> None:
+def solution_projects(root: Path, local: bool = False) -> list[Path]:
     paths = [project(root), *tests(root)]
     values = evaluate(root, local=local)["Properties"]
     for name in ["UtilityProjectPath", "ExtensionProjectPath"]:
@@ -72,6 +72,36 @@ def solution(root: Path, local: bool = False) -> None:
             if not dependency.is_file():
                 raise ValueError(f"Missing project: {dependency}")
             paths.append(dependency)
+    return paths
+
+
+def validate_solution(root: Path) -> None:
+    target = root / (root.name + ".slnx")
+    if not target.is_file():
+        raise ValueError(f"Missing solution: {target.name}. Run project.py solution.")
+    try:
+        xml = ET.parse(target).getroot()
+    except ET.ParseError as error:
+        raise ValueError(f"Invalid solution: {target.name}: {error}") from error
+    if xml.tag != "Solution":
+        raise ValueError(f"Invalid solution root: {target.name}")
+    paths = set()
+    for entry in xml.iter("Project"):
+        relative = entry.get("Path", "").replace("\\", "/")
+        path = (root / relative).resolve()
+        if not relative or not path.is_relative_to(root.resolve()) or not path.is_file():
+            raise ValueError(f"Invalid solution project: {relative}")
+        if path in paths:
+            raise ValueError(f"Duplicate solution project: {relative}")
+        paths.add(path)
+    missing = {path.resolve() for path in solution_projects(root)} - paths
+    if missing:
+        names = ", ".join(sorted(path.relative_to(root).as_posix() for path in missing))
+        raise ValueError(f"Solution is missing projects: {names}. Run project.py solution.")
+
+
+def solution(root: Path, local: bool = False) -> None:
+    paths = solution_projects(root, local)
     xml = ET.Element("Solution")
     for path in paths:
         ET.SubElement(xml, "Project", Path=os.path.relpath(path, root).replace("\\", "/"))
@@ -180,12 +210,23 @@ def main() -> None:
     args = parser.parse_args()
     root = args.repo.resolve()
     if args.command == "check":
-        project(root)
+        validate_solution(root)
         run(["dotnet", "tool", "restore"], root)
         run(["dotnet", "tool", "run", "csharpier", "check", "."], root)
     elif args.command == "test":
         for path in tests(root):
-            run(["dotnet", "test", str(path), "-c", args.configuration, "--nologo"], root)
+            run(
+                [
+                    "dotnet",
+                    "test",
+                    str(path),
+                    "-c",
+                    args.configuration,
+                    "-p:UsePinnedSharedDependencies=true",
+                    "--nologo",
+                ],
+                root,
+            )
     elif args.command == "platform":
         print(evaluate(root)["Properties"]["ModPlatform"] or "library")
     elif args.command == "solution":

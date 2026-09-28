@@ -64,6 +64,92 @@ class ProjectTests(unittest.TestCase):
             self.assertEqual(b"font-data", package.read("UserData/Example/font"))
         self.assertTrue((archive.parent / "SHA256SUMS.txt").exists())
 
+    def test_missing_solution_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Missing solution"):
+            project.validate_solution(self.root)
+
+    def test_check_rejects_missing_solution_before_running_tools(self):
+        with (
+            patch.object(sys, "argv", ["project.py", "check", "--repo", str(self.root)]),
+            patch.object(project, "run") as run,
+        ):
+            with self.assertRaisesRegex(ValueError, "Missing solution"):
+                project.main()
+            run.assert_not_called()
+
+    def test_test_command_uses_pinned_dependencies_and_requested_configuration(self):
+        path = self.root / "tests/Example.Tests/Example.Tests.csproj"
+        path.parent.mkdir(parents=True)
+        path.write_text("<Project />")
+        with (
+            patch.object(
+                sys,
+                "argv",
+                ["project.py", "test", "--repo", str(self.root), "--configuration", "Debug"],
+            ),
+            patch.object(project, "run") as run,
+        ):
+            project.main()
+            run.assert_called_once_with(
+                [
+                    "dotnet",
+                    "test",
+                    str(path),
+                    "-c",
+                    "Debug",
+                    "-p:UsePinnedSharedDependencies=true",
+                    "--nologo",
+                ],
+                self.root,
+            )
+
+    def test_solution_must_include_new_tests(self):
+        project.solution(self.root)
+        test = self.root / "tests/Example.Tests/Example.Tests.csproj"
+        test.parent.mkdir(parents=True)
+        test.write_text("<Project />")
+        with self.assertRaisesRegex(ValueError, "missing projects"):
+            project.validate_solution(self.root)
+        project.solution(self.root)
+        project.validate_solution(self.root)
+
+    def test_solution_accepts_folders_and_rejects_invalid_entries(self):
+        target = self.root / (self.root.name + ".slnx")
+        target.write_text(
+            '<Solution><Folder Name="/Source/">'
+            '<Project Path="src/Example/Example.csproj" /></Folder></Solution>'
+        )
+        project.validate_solution(self.root)
+        for path in ["missing.csproj", "../outside.csproj", ""]:
+            with self.subTest(path=path):
+                target.write_text(f'<Solution><Project Path="{path}" /></Solution>')
+                with self.assertRaisesRegex(ValueError, "Invalid solution project"):
+                    project.validate_solution(self.root)
+
+    def test_solution_requires_pinned_shared_projects(self):
+        project.solution(self.root)
+        dependency = self.root / "shared/Library/Library.csproj"
+        dependency.parent.mkdir(parents=True)
+        dependency.write_text("<Project />")
+        values = {"Properties": {"UtilityProjectPath": str(dependency), "ExtensionProjectPath": ""}}
+        with patch.object(project, "evaluate", return_value=values) as evaluate:
+            with self.assertRaisesRegex(ValueError, "missing projects"):
+                project.validate_solution(self.root)
+            evaluate.assert_called_once_with(self.root, local=False)
+            project.solution(self.root)
+            project.validate_solution(self.root)
+
+    def test_invalid_xml_and_duplicate_projects_are_rejected(self):
+        target = self.root / (self.root.name + ".slnx")
+        for xml in ["<Solution", "<NotSolution />"]:
+            target.write_text(xml)
+            with self.assertRaisesRegex(ValueError, "Invalid solution"):
+                project.validate_solution(self.root)
+        entry = '<Project Path="src/Example/Example.csproj" />'
+        target.write_text(f"<Solution>{entry}{entry}</Solution>")
+        with self.assertRaisesRegex(ValueError, "Duplicate solution project"):
+            project.validate_solution(self.root)
+
     def test_wrong_version_rejected_before_build_or_publication(self):
         with patch.object(project, "build") as build:
             with self.assertRaisesRegex(ValueError, "does not match"):
