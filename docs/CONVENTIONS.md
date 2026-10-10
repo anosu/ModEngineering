@@ -30,6 +30,8 @@ python shared/ModEngineering/scripts/project.py build --configuration Release
 
 Android 打包使用 `project.py package`；PC 显式安装使用 `project.py deploy`。PC 在忽略 Git 的 `Build.local.props` 中设置 GameDir 或 GameInteropDir；纯编译只需要 interop，不会复制文件到游戏。已有游戏缓存和本机配置应保留。
 
+Android ZIP 禁止夹带 Loader 所有的 MelonLoader、Harmony、Il2CppInterop.Runtime 和 Java.Interop DLL。带内嵌 DEX/JNI 的项目由 `build_android.py` 重建后记录源码与产物 SHA256；`check` 验证主项目和固定共享项目的 `android/build/manifest.json`，拒绝源码与二进制不一致的提交。日常构建和 CI 校验无需安装 Android SDK/NDK。
+
 ## 项目差异
 
 PC Mod 在 `.csproj` 声明 `<ModPlatform>pc</ModPlatform>`；Android Mod 在 `.csproj` 导入 `shared/ModEngineering/build/Android.props`，获得平台、目标框架、标准依赖路径、基础加载器引用和最小 Interop 目录的通配引用。普通共享库无需声明平台。版本写在 `.csproj`；AssemblyName、Product 和 RootNamespace 默认来自项目文件名，只有不同名时才需要覆盖。默认 PC 安装目录是 `BepInEx/plugins/<程序集>/<配置>/net6.0`，特殊项目可设置 ModDeployDirectory。

@@ -13,6 +13,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path, PurePosixPath
+from android_artifacts import verify as verify_android_artifacts
 
 
 def run(args: list[str], root: Path, *, capture: bool = False) -> str:
@@ -97,6 +98,10 @@ def validate_solution(root: Path) -> None:
     if missing:
         names = ", ".join(sorted(path.relative_to(root).as_posix() for path in missing))
         raise ValueError(f"Solution is missing projects: {names}. Run project.py solution.")
+    # Check the main project and its pinned shared sources without installing an Android SDK.
+    for directory in sorted({path.parents[2] for path in paths}):
+        if (directory / "build_android.py").is_file() and (directory / "android").is_dir():
+            verify_android_artifacts(directory)
 
 
 def solution(root: Path, local: bool = False) -> None:
@@ -152,6 +157,10 @@ def package(root: Path, configuration: str, expected_version: str | None = None)
         path = PurePosixPath(destination)
         if not destination or path.is_absolute() or ".." in path.parts or "\\" in destination:
             raise ValueError(f"Invalid archive path: {destination}")
+        if path.name.casefold() in {
+            "melonloader.dll", "0harmony.dll", "il2cppinterop.runtime.dll", "java.interop.dll"
+        }:
+            raise ValueError(f"Loader-owned assembly must not be packaged: {destination}")
         if destination in files:
             raise ValueError(f"Duplicate archive path: {destination}")
         source = Path(item["FullPath"]).resolve()
