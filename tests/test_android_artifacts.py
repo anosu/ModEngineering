@@ -20,7 +20,11 @@ class AndroidArtifactTests(unittest.TestCase):
             binary.write_bytes(b"dex")
             android_artifacts.write(root)
             android_artifacts.verify(root)
-            for file, content in [(source, b"changed"), (binary, b"changed"), (source.with_name("New.java"), b"new")]:
+            for file, content in [
+                (source, b"changed"),
+                (binary, b"changed"),
+                (source.with_name("New.java"), b"new"),
+            ]:
                 with self.subTest(file=file):
                     original = file.read_bytes() if file.exists() else None
                     file.write_bytes(content)

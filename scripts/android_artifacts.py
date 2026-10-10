@@ -10,7 +10,9 @@ def snapshot(root: Path) -> dict:
     android = root / "android"
     sources = [root / "build_android.py"]
     for extension in ("*.java", "*.c", "*.h"):
-        sources += sorted(p for p in android.rglob(extension) if "build" not in p.relative_to(android).parts)
+        sources += sorted(
+            p for p in android.rglob(extension) if "build" not in p.relative_to(android).parts
+        )
     artifacts = [android / "build/classes.dex", *sorted((android / "build").rglob("*.so"))]
     if any(p.suffix == ".c" for p in sources) and len(artifacts) == 1:
         raise ValueError(f"Missing Android JNI binary in {root}")
@@ -35,7 +37,9 @@ def verify(root: Path) -> None:
         recorded = json.loads(path.read_text(encoding="utf-8"))
         current = snapshot(root)
     except (OSError, ValueError) as error:
-        raise ValueError(f"Cannot verify Android artifacts in {root}; rebuild with build_android.py: {error}") from error
+        raise ValueError(
+            f"Cannot verify Android artifacts in {root}; rebuild with build_android.py: {error}"
+        ) from error
     if recorded != current:
         raise ValueError(f"Stale Android artifacts in {root}; rebuild with build_android.py")
 

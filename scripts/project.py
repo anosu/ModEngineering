@@ -13,6 +13,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path, PurePosixPath
+
 from android_artifacts import verify as verify_android_artifacts
 
 
@@ -158,7 +159,10 @@ def package(root: Path, configuration: str, expected_version: str | None = None)
         if not destination or path.is_absolute() or ".." in path.parts or "\\" in destination:
             raise ValueError(f"Invalid archive path: {destination}")
         if path.name.casefold() in {
-            "melonloader.dll", "0harmony.dll", "il2cppinterop.runtime.dll", "java.interop.dll"
+            "melonloader.dll",
+            "0harmony.dll",
+            "il2cppinterop.runtime.dll",
+            "java.interop.dll",
         }:
             raise ValueError(f"Loader-owned assembly must not be packaged: {destination}")
         if destination in files:

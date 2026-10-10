@@ -68,16 +68,28 @@ class ProjectTests(unittest.TestCase):
             project.validate_solution(self.root)
 
     def test_loader_assemblies_are_rejected_even_when_explicitly_declared(self):
-        for name in ["MelonLoader.dll", "0Harmony.dll", "Il2CppInterop.Runtime.dll", "JAVA.Interop.DLL"]:
+        for name in [
+            "MelonLoader.dll",
+            "0Harmony.dll",
+            "Il2CppInterop.Runtime.dll",
+            "JAVA.Interop.DLL",
+        ]:
             with self.subTest(name=name):
                 data = {
                     "Properties": {"ModPlatform": "android", "Version": "1.2.3"},
-                    "Items": {"ModPackageFile": [{
-                        "Destination": "Mods/Example/" + name,
-                        "FullPath": str(self.root / name),
-                    }]},
+                    "Items": {
+                        "ModPackageFile": [
+                            {
+                                "Destination": "Mods/Example/" + name,
+                                "FullPath": str(self.root / name),
+                            }
+                        ]
+                    },
                 }
-                with patch.object(project, "evaluate", return_value=data), patch.object(project, "build"):
+                with (
+                    patch.object(project, "evaluate", return_value=data),
+                    patch.object(project, "build"),
+                ):
                     with self.assertRaisesRegex(ValueError, "Loader-owned"):
                         project.package(self.root, "Release")
 
